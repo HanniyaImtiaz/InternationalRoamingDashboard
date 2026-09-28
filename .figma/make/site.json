@@ -1,0 +1,10 @@
+{
+  "description": "Manage international roaming bundles effortlessly with a user-friendly dashboard, dynamic search, and customizable credit limits for seamless travel connectivity.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
