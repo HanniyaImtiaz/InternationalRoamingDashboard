@@ -16,7 +16,6 @@ interface Bundle {
   validityDays: number;   // for sorting/grouping
   data: string;
   dataGB: number;
-  voice?: string;
   countries: string[];
 }
 
@@ -49,12 +48,6 @@ const EURO_COUNTRIES = [
 
 const BUNDLES: Bundle[] = [
   // KSA
-  {
-    id: 'hajj-8gb', name: 'Hajj Offer', region: 'KSA',
-    price: 6499, validityLabel: '60 Days', validityDays: 60,
-    data: '8 GB', dataGB: 8, voice: '50 Mins + SMS',
-    countries: ['Saudi Arabia'],
-  },
   {
     id: 'saudi-2000', name: 'Saudi Roaming 2GB', region: 'KSA',
     price: 2749, validityLabel: '30 Days', validityDays: 30,
@@ -162,7 +155,16 @@ const REGION_META: Record<Region, { icon: string; color: string; desc: string }>
   Euro:    { icon: '🇪🇺', color: '#818CF8', desc: '31 European countries' },
 };
 
-const ACTIVE_BUNDLE = BUNDLES.find(b => b.id === 'euro-5gb')!;
+function ordinalDate(validityDays: number): string {
+  const d = new Date(2026, 8, 29); // today: Sept 29 2026
+  d.setDate(d.getDate() + validityDays);
+  const day = d.getDate();
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const s = day === 1 || day === 21 || day === 31 ? 'st'
+    : day === 2 || day === 22 ? 'nd'
+    : day === 3 || day === 23 ? 'rd' : 'th';
+  return `${day}${s} ${months[d.getMonth()]}`;
+}
 const DATA_TOTAL = 5, DATA_USED = 1.8, DATA_REM = 3.2;
 const VOICE_TOTAL = 50, VOICE_USED = 15, VOICE_REM = 35;
 const MIN_CREDIT = 5000;
@@ -251,42 +253,86 @@ function CircularProgress({ pct, color, size = 120, strokeWidth = 10, children }
 
 // ─── Dual Incentive ───────────────────────────────────────────────────────────
 
-function DualIncentive({ size = 120, sw = 10 }: { size?: number; sw?: number }) {
-  const dataPct = (DATA_REM / DATA_TOTAL) * 100;
-  const voicePct = (VOICE_REM / VOICE_TOTAL) * 100;
-  const fs = size > 115 ? 17 : 13;
+// Demo usage ratio per bundle (seeded by index for variety)
+const USAGE_RATIOS = [0.36, 0.18, 0.52, 0.09, 0.71, 0.28, 0.44];
+
+function bundleUsage(b: Bundle, idx: number) {
+  const ratio = USAGE_RATIOS[idx % USAGE_RATIOS.length];
+  const total = b.dataGB;
+  const used = parseFloat((total * ratio).toFixed(2));
+  const rem = parseFloat((total - used).toFixed(2));
+  const pct = (rem / total) * 100;
+  const fmtGB = (n: number) => n >= 1 ? `${n} GB` : `${Math.round(n * 1024)} MB`;
+  return { total, used, rem, pct, fmtRem: fmtGB(rem), fmtUsed: fmtGB(used), fmtTotal: fmtGB(total) };
+}
+
+function DataIncentive({ bundles, size = 140, sw = 12 }: { bundles: Bundle[]; size?: number; sw?: number }) {
+  const fs = size > 130 ? 18 : 14;
+
+  if (bundles.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-2 w-full">
+        <CircularProgress pct={0} color="rgba(255,255,255,0.15)" size={size} strokeWidth={sw}>
+          <span style={{ color: '#475569', fontFamily: 'JetBrains Mono', fontSize: fs }}>—</span>
+        </CircularProgress>
+        <div className="text-xs" style={{ color: '#475569', fontFamily: 'Outfit' }}>No data yet</div>
+      </div>
+    );
+  }
+
+  if (bundles.length === 1) {
+    const b = bundles[0];
+    const u = bundleUsage(b, 0);
+    return (
+      <div className="flex flex-col items-center gap-2 w-full">
+        <CircularProgress pct={u.pct} color="#06B6D4" size={size} strokeWidth={sw}>
+          <div className="flex flex-col items-center">
+            <span className="font-bold leading-none" style={{ color: '#06B6D4', fontFamily: 'JetBrains Mono', fontSize: fs }}>{u.fmtRem}</span>
+            <span className="mt-0.5" style={{ color: '#475569', fontFamily: 'Outfit', fontSize: 10 }}>remaining</span>
+          </div>
+        </CircularProgress>
+        <div className="flex items-center gap-5 mt-1">
+          {[{ label: 'Remaining', val: u.fmtRem, col: '#06B6D4' }, { label: 'Used', val: u.fmtUsed, col: '#94A3B8' }, { label: 'Total', val: u.fmtTotal, col: '#475569' }].map((s, i, arr) => (
+            <div key={s.label} className="flex items-center gap-5">
+              <div className="text-center">
+                <div className="text-xs font-bold" style={{ color: s.col, fontFamily: 'JetBrains Mono' }}>{s.val}</div>
+                <div className="text-xs" style={{ color: '#475569', fontFamily: 'Outfit' }}>{s.label}</div>
+              </div>
+              {i < arr.length - 1 && <div className="w-px h-6" style={{ background: 'rgba(255,255,255,0.1)' }} />}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Multiple bundles — horizontal scroll row
+  const circleSize = Math.max(90, Math.round(size * 0.72));
+  const circleSw = Math.max(8, Math.round(sw * 0.8));
+  const circlefs = 12;
+  const COLORS = ['#06B6D4', '#818CF8', '#34D399', '#F59E0B', '#FB7185'];
 
   return (
-    <div className="flex items-center justify-around w-full">
-      <div className="flex flex-col items-center gap-1.5">
-        <CircularProgress pct={dataPct} color="#06B6D4" size={size} strokeWidth={sw}>
-          <div className="flex flex-col items-center">
-            <span className="font-bold leading-none" style={{ color: '#06B6D4', fontFamily: 'JetBrains Mono', fontSize: fs }}>{DATA_REM} GB</span>
-            <span style={{ color: '#475569', fontFamily: 'Outfit', fontSize: 9 }}>of {DATA_TOTAL} GB</span>
-          </div>
-        </CircularProgress>
-        <div className="flex items-center gap-1">
-          <span style={{ fontSize: 10 }}>📶</span>
-          <span className="text-xs font-semibold" style={{ color: '#06B6D4', fontFamily: 'Outfit' }}>Data</span>
-        </div>
-        <div className="text-xs" style={{ color: '#475569', fontFamily: 'JetBrains Mono', fontSize: 10 }}>{DATA_USED} / {DATA_TOTAL} GB used</div>
-      </div>
-
-      <div style={{ width: 1, height: size * 0.7, background: 'rgba(255,255,255,0.07)', borderRadius: 1 }} />
-
-      <div className="flex flex-col items-center gap-1.5">
-        <CircularProgress pct={voicePct} color="#F59E0B" size={size} strokeWidth={sw}>
-          <div className="flex flex-col items-center">
-            <span className="font-bold leading-none" style={{ color: '#F59E0B', fontFamily: 'JetBrains Mono', fontSize: fs }}>{VOICE_REM}</span>
-            <span style={{ color: '#F59E0B', fontFamily: 'JetBrains Mono', fontSize: fs - 3 }}>Min</span>
-            <span style={{ color: '#475569', fontFamily: 'Outfit', fontSize: 9 }}>of {VOICE_TOTAL}</span>
-          </div>
-        </CircularProgress>
-        <div className="flex items-center gap-1">
-          <span style={{ fontSize: 10 }}>📞</span>
-          <span className="text-xs font-semibold" style={{ color: '#F59E0B', fontFamily: 'Outfit' }}>Voice</span>
-        </div>
-        <div className="text-xs" style={{ color: '#475569', fontFamily: 'JetBrains Mono', fontSize: 10 }}>{VOICE_USED} / {VOICE_TOTAL} Min used</div>
+    <div className="w-full overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
+      <div className="flex gap-4 px-1" style={{ width: 'max-content' }}>
+        {bundles.map((b, idx) => {
+          const u = bundleUsage(b, idx);
+          const color = COLORS[idx % COLORS.length];
+          return (
+            <div key={b.id + idx} className="flex flex-col items-center gap-1.5 flex-shrink-0">
+              <CircularProgress pct={u.pct} color={color} size={circleSize} strokeWidth={circleSw}>
+                <div className="flex flex-col items-center px-1">
+                  <span className="font-bold leading-none text-center" style={{ color, fontFamily: 'JetBrains Mono', fontSize: circlefs }}>{u.fmtRem}</span>
+                  <span style={{ color: '#475569', fontFamily: 'Outfit', fontSize: 9 }}>left</span>
+                </div>
+              </CircularProgress>
+              <div className="text-center" style={{ maxWidth: circleSize }}>
+                <div className="text-xs font-semibold leading-tight" style={{ color: '#E2E8F0', fontFamily: 'Outfit', fontSize: 10 }}>{b.name}</div>
+                <div style={{ color: '#475569', fontFamily: 'JetBrains Mono', fontSize: 9 }}>{u.fmtUsed} used</div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -577,9 +623,16 @@ function CreditLimitSection({ committedLimit, onUpdate, showTitle = true, payDif
           <div className="text-sm font-bold mb-1" style={{ color: '#E2E8F0', fontFamily: 'Outfit' }}>Credit Limit Adjustment</div>
           <div className="text-xs mb-4" style={{ color: '#475569', fontFamily: 'Outfit' }}>Adjust your roaming credit ceiling</div>
         </>}
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-1.5">
           <span className="text-xs" style={{ color: '#94A3B8', fontFamily: 'Outfit' }}>Current Limit</span>
           <span className="text-lg font-bold" style={{ color: '#06B6D4', fontFamily: 'JetBrains Mono' }}>PKR {committedLimit.toLocaleString()}</span>
+        </div>
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs" style={{ color: '#94A3B8', fontFamily: 'Outfit' }}>New Limit</span>
+          <span className="text-base font-bold transition-all duration-200"
+            style={{ color: draft !== committedLimit ? '#10B981' : '#475569', fontFamily: 'JetBrains Mono' }}>
+            PKR {draft.toLocaleString()}
+          </span>
         </div>
         <input type="range" min={1000} max={50000} step={500} value={draft} onChange={e => slide(Number(e.target.value))} className="w-full mb-2"
           style={{ background: `linear-gradient(to right,#06B6D4 ${pct}%,rgba(255,255,255,0.1) ${pct}%)` }} />
@@ -668,7 +721,6 @@ function BundleCard({ bundle, isFav, onToggleFav, onAction, onViewCountries }: {
       <h3 className="text-sm font-semibold mt-1 mb-3 pl-1" style={{ color: '#E2E8F0', fontFamily: 'Outfit', lineHeight: 1.3 }}>{bundle.name}</h3>
       <div className="flex gap-3 mb-3 items-end">
         <div><div className="text-xs mb-0.5" style={{ color: '#475569', fontFamily: 'Outfit' }}>Data</div><div className="font-bold text-base" style={{ color: '#06B6D4', fontFamily: 'JetBrains Mono' }}>{bundle.data}</div></div>
-        {bundle.voice && <div><div className="text-xs mb-0.5" style={{ color: '#475569', fontFamily: 'Outfit' }}>Voice</div><div className="font-bold text-sm" style={{ color: '#F59E0B', fontFamily: 'JetBrains Mono' }}>{bundle.voice}</div></div>}
         <div className="ml-auto text-right"><div className="text-xs mb-0.5" style={{ color: '#475569', fontFamily: 'Outfit' }}>Valid</div><div className="text-xs font-medium" style={{ color: '#94A3B8', fontFamily: 'Outfit' }}>{bundle.validityLabel}</div></div>
       </div>
       <div className="mb-4"><span className="font-bold text-xl" style={{ color: '#E2E8F0', fontFamily: 'JetBrains Mono' }}>PKR {bundle.price.toLocaleString()}</span></div>
@@ -701,7 +753,6 @@ function BundleListRow({ bundle, isFav, onToggleFav, onSubscribe, onViewCountrie
         <div className="text-sm font-semibold truncate" style={{ color: '#E2E8F0', fontFamily: 'Outfit' }}>{bundle.name}</div>
         <div className="flex items-center gap-3 mt-0.5">
           <span style={{ color: '#06B6D4', fontFamily: 'JetBrains Mono', fontSize: 12, fontWeight: 600 }}>{bundle.data}</span>
-          {bundle.voice && <span style={{ color: '#F59E0B', fontFamily: 'JetBrains Mono', fontSize: 12, fontWeight: 600 }}>{bundle.voice}</span>}
           <span className="font-bold text-sm" style={{ color: '#E2E8F0', fontFamily: 'JetBrains Mono', marginLeft: 'auto' }}>PKR {bundle.price.toLocaleString()}</span>
         </div>
       </div>
@@ -753,15 +804,15 @@ function BundleModal({ bundle, action, onClose, onConfirm, onViewCountries }: {
   onViewCountries: (b: Bundle) => void;
 }) {
   const [countriesOpen, setCountriesOpen] = useState(false);
-  const [moreInfoOpen, setMoreInfoOpen] = useState(false);
   const [tcOpen, setTcOpen] = useState(false);
+  const [showSubPayGw, setShowSubPayGw] = useState(false);
   const meta = REGION_META[bundle.region];
   const displayCountries = bundle.countries.length <= 3
     ? bundle.countries
     : bundle.countries.slice(0, 3);
   const hasMore = bundle.countries.length > 3;
 
-  return (
+  const sheet = (
     <BottomSheet onBdClick={onClose}>
       <div className="px-5 pb-8 pt-2">
         <div className="flex items-start justify-between mb-4">
@@ -782,12 +833,6 @@ function BundleModal({ bundle, action, onClose, onConfirm, onViewCountries }: {
             <div className="text-xs mb-1" style={{ color: '#475569', fontFamily: 'Outfit' }}>Data</div>
             <div className="text-2xl font-bold" style={{ color: '#06B6D4', fontFamily: 'JetBrains Mono' }}>{bundle.data}</div>
           </div>
-          {bundle.voice && (
-            <div className="flex-1 rounded-2xl p-3.5" style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.18)' }}>
-              <div className="text-xs mb-1" style={{ color: '#475569', fontFamily: 'Outfit' }}>Voice</div>
-              <div className="text-xl font-bold" style={{ color: '#F59E0B', fontFamily: 'JetBrains Mono' }}>{bundle.voice}</div>
-            </div>
-          )}
         </div>
 
         {/* Applicable Countries - collapsible */}
@@ -830,26 +875,6 @@ function BundleModal({ bundle, action, onClose, onConfirm, onViewCountries }: {
           )}
         </div>
 
-        {/* More Information — collapsible */}
-        <div className="mb-3">
-          <button className="w-full flex items-center justify-between py-3 px-4 rounded-2xl"
-            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
-            onClick={() => setMoreInfoOpen(o => !o)}>
-            <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#475569', fontFamily: 'Outfit' }}>More Information</span>
-            <span style={{ color: '#475569', fontSize: 16, transform: moreInfoOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>›</span>
-          </button>
-          {moreInfoOpen && (
-            <div className="mt-2 rounded-2xl p-4 fade-in" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-              {MORE_INFO_TEXT.map((item, i) => (
-                <div key={i} className="mb-3 last:mb-0">
-                  <div className="text-xs font-semibold mb-0.5" style={{ color: '#94A3B8', fontFamily: 'Outfit' }}>{item.label}</div>
-                  <div className="text-xs leading-relaxed" style={{ color: '#475569', fontFamily: 'Inter', wordBreak: 'break-all' }}>{item.value}</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
         {/* Terms & Conditions — collapsible */}
         <div className="mb-7">
           <button className="w-full flex items-center justify-between py-3 px-4 rounded-2xl"
@@ -869,44 +894,103 @@ function BundleModal({ bundle, action, onClose, onConfirm, onViewCountries }: {
           )}
         </div>
 
-        <button onClick={onConfirm} className="w-full py-4 rounded-2xl text-base font-bold"
-          style={{ background: action === 'buy' ? '#06B6D4' : 'rgba(6,182,212,0.12)', color: action === 'buy' ? '#070B14' : '#06B6D4', border: action === 'subscribe' ? '1px solid rgba(6,182,212,0.35)' : 'none', fontFamily: 'Outfit' }}>
+        <button onClick={() => action === 'subscribe' ? setShowSubPayGw(true) : onConfirm()}
+          className="w-full py-4 rounded-2xl text-base font-bold"
+          style={{ background: '#06B6D4', color: '#070B14', fontFamily: 'Outfit' }}>
           {action === 'buy' ? `Confirm Purchase — PKR ${bundle.price.toLocaleString()}` : 'Confirm Subscription'}
         </button>
       </div>
     </BottomSheet>
   );
+  // Note: payment gateway renders above the bottom sheet when open
+  return (
+    <>
+      {sheet}
+      {showSubPayGw && (
+        <PaymentGateway
+          targetAmount={bundle.price}
+          onSuccess={() => { setShowSubPayGw(false); onConfirm(); }}
+          onClose={() => setShowSubPayGw(false)} />
+      )}
+    </>
+  );
 }
 
 // ─── Incentive Header (bundle info at top) ────────────────────────────────────
 
-function BundleHeaderBadge() {
-  return (
-    <div className="flex items-center justify-between mb-4 px-1 py-2.5 rounded-2xl"
-      style={{ background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.2)' }}>
-      <div className="flex items-center gap-2 px-2">
-        <div className="w-2 h-2 rounded-full pulse-glow" style={{ background: '#10B981', flexShrink: 0 }} />
-        <div>
-          <div className="text-xs font-bold" style={{ color: '#E2E8F0', fontFamily: 'Outfit' }}>{ACTIVE_BUNDLE.name}</div>
-          <div className="text-xs" style={{ color: '#475569', fontFamily: 'Outfit' }}>Active Bundle</div>
+function BundleHeaderBadge({ activeBundles }: { activeBundles: Bundle[] }) {
+  if (activeBundles.length === 0) {
+    return (
+      <div className="flex items-center gap-2 mb-4 px-3 py-2.5 rounded-2xl"
+        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
+        <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#475569' }} />
+        <span className="text-xs font-semibold" style={{ color: '#475569', fontFamily: 'Outfit' }}>No Active Bundle — subscribe below to get started</span>
+      </div>
+    );
+  }
+
+  if (activeBundles.length === 1) {
+    const b = activeBundles[0];
+    const expiry = ordinalDate(b.validityDays);
+    return (
+      <div className="mb-4 px-3 py-3 rounded-2xl"
+        style={{ background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.25)' }}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full pulse-glow flex-shrink-0" style={{ background: '#10B981' }} />
+            <div>
+              <div className="text-sm font-bold" style={{ color: '#E2E8F0', fontFamily: 'Outfit' }}>{b.name}</div>
+              <div className="text-xs mt-0.5" style={{ color: '#475569', fontFamily: 'Outfit' }}>Active · {b.validityLabel}</div>
+            </div>
+          </div>
+          <div className="text-right ml-3">
+            <div className="text-xs font-semibold" style={{ color: '#94A3B8', fontFamily: 'Outfit' }}>Expires On</div>
+            <div className="text-sm font-bold mt-0.5" style={{ color: '#F59E0B', fontFamily: 'JetBrains Mono' }}>{expiry}</div>
+          </div>
         </div>
       </div>
-      <div className="px-3 py-1 rounded-full mr-1" style={{ background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.2)' }}>
-        <span className="text-xs font-semibold" style={{ color: '#06B6D4', fontFamily: 'JetBrains Mono' }}>Valid: {ACTIVE_BUNDLE.validityLabel}</span>
+    );
+  }
+
+  // Multiple bundles — compact stacked list
+  return (
+    <div className="mb-4 rounded-2xl overflow-hidden"
+      style={{ border: '1px solid rgba(6,182,212,0.2)' }}>
+      <div className="px-3 py-2" style={{ background: 'rgba(6,182,212,0.1)' }}>
+        <div className="flex items-center gap-1.5">
+          <div className="w-1.5 h-1.5 rounded-full pulse-glow" style={{ background: '#10B981' }} />
+          <span className="text-xs font-bold" style={{ color: '#06B6D4', fontFamily: 'Outfit' }}>{activeBundles.length} Active Bundles</span>
+        </div>
       </div>
+      {activeBundles.map((b, i) => {
+        const expiry = ordinalDate(b.validityDays);
+        return (
+          <div key={b.id + i} className="flex items-center justify-between px-3 py-2"
+            style={{ background: 'rgba(6,182,212,0.04)', borderTop: '1px solid rgba(6,182,212,0.1)' }}>
+            <div className="min-w-0 mr-3">
+              <div className="text-xs font-semibold truncate" style={{ color: '#E2E8F0', fontFamily: 'Outfit' }}>{b.name}</div>
+              <div className="text-xs" style={{ color: '#475569', fontFamily: 'Outfit' }}>{b.data} · {b.validityLabel}</div>
+            </div>
+            <div className="text-right flex-shrink-0">
+              <div className="text-xs" style={{ color: '#94A3B8', fontFamily: 'Outfit' }}>Expires</div>
+              <div className="text-sm font-bold" style={{ color: '#F59E0B', fontFamily: 'JetBrains Mono' }}>{expiry}</div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
 
 // ─── Home Incentive Widget ────────────────────────────────────────────────────
 
-function IncentiveWidget({ onClick }: { onClick: () => void }) {
+function IncentiveWidget({ onClick, activeBundles }: { onClick: () => void; activeBundles: Bundle[] }) {
   return (
     <div className="rounded-3xl p-5" style={{ background: 'linear-gradient(135deg,#0E1828 0%,#162036 100%)', border: '1px solid rgba(255,255,255,0.08)' }}>
       <div className="text-xs font-semibold mb-3 uppercase tracking-widest" style={{ color: '#475569', fontFamily: 'Outfit' }}>Remaining Incentive</div>
-      <BundleHeaderBadge />
+      <BundleHeaderBadge activeBundles={activeBundles} />
       <button onClick={onClick} className="w-full flex flex-col items-center">
-        <DualIncentive size={115} sw={10} />
+        <DataIncentive bundles={activeBundles} size={115} sw={10} />
         <div className="flex items-center gap-1.5 mt-4">
           <span className="text-xs" style={{ color: '#475569', fontFamily: 'Outfit' }}>Tap for</span>
           <span className="text-xs font-semibold" style={{ color: '#06B6D4', fontFamily: 'Outfit' }}>Connectivity Settings</span>
@@ -920,13 +1004,14 @@ function IncentiveWidget({ onClick }: { onClick: () => void }) {
 // ─── HOME VIEW ────────────────────────────────────────────────────────────────
 
 function HomeView({ roaming, onRoamingChange, onOpenSettings, favs, onToggleFav,
-  onBundleAction, onSubscribe, onViewCountries, userCreditLimit, onCreditLimitUpdate }: {
+  onBundleAction, onSubscribe, onViewCountries, userCreditLimit, onCreditLimitUpdate, activeBundles }: {
   roaming: boolean; onRoamingChange: (v: boolean) => void; onOpenSettings: () => void;
   favs: Set<string>; onToggleFav: (id: string) => void;
   onBundleAction: (b: Bundle, a: BundleAction | 'blocked') => void;
   onSubscribe: (b: Bundle) => void;
   onViewCountries: (b: Bundle) => void;
   userCreditLimit: number; onCreditLimitUpdate: (v: number) => void;
+  activeBundles: Bundle[];
 }) {
   const [query, setQuery] = useState('');
   const [selRegion, setSelRegion] = useState<Region | null>(null);
@@ -952,6 +1037,12 @@ function HomeView({ roaming, onRoamingChange, onOpenSettings, favs, onToggleFav,
           </div>
         </div>
 
+        {!showRegion && (
+          <div className="flex justify-center mb-4">
+            <ModeToggle active={roaming} onChange={onRoamingChange} disabled={needsTopUp} />
+          </div>
+        )}
+
         {!showRegion && needsTopUp && (
           <div className="mb-5 fade-in">
             <div className="flex items-start gap-3 rounded-2xl px-4 py-3 mb-3" style={{ background: 'rgba(245,158,11,0.09)', border: '1px solid rgba(245,158,11,0.25)' }}>
@@ -964,12 +1055,6 @@ function HomeView({ roaming, onRoamingChange, onOpenSettings, favs, onToggleFav,
               </div>
             </div>
             <CreditLimitSection committedLimit={userCreditLimit} onUpdate={onCreditLimitUpdate} showTitle={false} payDifferential />
-          </div>
-        )}
-
-        {!showRegion && (
-          <div className="flex justify-center mb-1">
-            <ModeToggle active={roaming} onChange={onRoamingChange} disabled={needsTopUp} />
           </div>
         )}
       </div>
@@ -991,9 +1076,9 @@ function HomeView({ roaming, onRoamingChange, onOpenSettings, favs, onToggleFav,
         </div>
       ) : (
         <>
-          {roaming && !needsTopUp && (
+          {roaming && (
             <div className="px-5 mb-4">
-              <IncentiveWidget onClick={onOpenSettings} />
+              <IncentiveWidget onClick={onOpenSettings} activeBundles={activeBundles} />
             </div>
           )}
 
@@ -1060,10 +1145,11 @@ function HomeView({ roaming, onRoamingChange, onOpenSettings, favs, onToggleFav,
 // ─── Connectivity Settings (formerly Roaming Centre) ─────────────────────────
 
 function ConnectivitySettings({ onBack, userCreditLimit, onCreditLimitUpdate,
-  dataRoaming, onDataRoamingChange }: {
+  dataRoaming, onDataRoamingChange, activeBundles }: {
   onBack: () => void;
   userCreditLimit: number; onCreditLimitUpdate: (v: number) => void;
   dataRoaming: boolean; onDataRoamingChange: (v: boolean) => void;
+  activeBundles: Bundle[];
 }) {
   const [paygBlocked, setPaygBlocked] = useState(false);
   const [incomingSMS, setIncomingSMS] = useState(true);
@@ -1112,8 +1198,8 @@ function ConnectivitySettings({ onBack, userCreditLimit, onCreditLimitUpdate,
       <div className="px-5 mb-5">
         <div className="rounded-3xl p-5" style={{ background: 'linear-gradient(135deg,#0E1828 0%,#162036 100%)', border: '1px solid rgba(255,255,255,0.08)' }}>
           <div className="text-xs font-semibold mb-3 uppercase tracking-widest" style={{ color: '#475569', fontFamily: 'Outfit' }}>Remaining Incentive</div>
-          <BundleHeaderBadge />
-          <DualIncentive size={125} sw={11} />
+          <BundleHeaderBadge activeBundles={activeBundles} />
+          <DataIncentive bundles={activeBundles} size={125} sw={11} />
         </div>
       </div>
 
@@ -1163,6 +1249,7 @@ export default function App() {
   const [roaming, setRoaming] = useState(false);
   const [dataRoaming, setDataRoaming] = useState(false);
   const [userCreditLimit, setUserCreditLimit] = useState(3000);
+  const [activeBundles, setActiveBundles] = useState<Bundle[]>([]);
   const [favs, setFavs] = useState<Set<string>>(new Set(['euro-10gb']));
   const [selBundle, setSelBundle] = useState<Bundle | null>(null);
   const [bundleAction, setBundleAction] = useState<BundleAction>('buy');
@@ -1178,6 +1265,14 @@ export default function App() {
     if (!v) setDataRoaming(false);
   }
 
+  function handleCreditLimitUpdate(v: number) {
+    setUserCreditLimit(v);
+    if (v >= MIN_CREDIT && !roaming) {
+      setRoaming(true);
+      setShowRoamingPopup(true);
+    }
+  }
+
   function handleBundleAction(b: Bundle, a: BundleAction | 'blocked') {
     if (a === 'blocked') { setShowCreditBlockedPopup(true); return; }
     setSelBundle(b); setBundleAction(a);
@@ -1188,12 +1283,11 @@ export default function App() {
   }
 
   function handleConfirm() {
-    const name = selBundle?.name;
+    const confirmed = selBundle;
     setSelBundle(null);
-    // Auto-enable data roaming on bundle subscribe
-    if (!dataRoaming) setDataRoaming(true);
-    setToast(`${bundleAction === 'buy' ? 'Purchased' : 'Subscribed to'}: ${name}`);
-    if (roaming && !dataRoaming) setTimeout(() => setShowDataRoamingPopup(true), 350);
+    if (confirmed) setActiveBundles(prev => [...prev, confirmed]);
+    setDataRoaming(true);
+    setTimeout(() => setShowDataRoamingPopup(true), 200);
   }
 
   function toggleFav(id: string) {
@@ -1217,7 +1311,7 @@ export default function App() {
             </div>
             <div className="text-lg font-bold mb-2" style={{ color: '#E2E8F0', fontFamily: 'Outfit' }}>International Roaming Activated</div>
             <p className="text-sm leading-relaxed mb-6" style={{ color: '#94A3B8', fontFamily: 'Inter' }}>
-              You have successfully activated International Roaming Services. Subscribe to bundles below and manage your roaming service settings in <span style={{ color: '#06B6D4' }}>Connectivity Settings</span>.
+              Voice Roaming enabled. Subscribe to a bundle to activate Data Roaming.
             </p>
             <button onClick={() => setShowRoamingPopup(false)} className="w-full py-3.5 rounded-2xl font-bold text-sm" style={{ background: '#06B6D4', color: '#070B14', fontFamily: 'Outfit' }}>Got it</button>
           </div>
@@ -1241,22 +1335,16 @@ export default function App() {
         </OverlayModal>
       )}
 
-      {/* Data roaming off popup */}
+      {/* Bundle subscribed confirmation */}
       {showDataRoamingPopup && (
         <OverlayModal onBdClick={() => setShowDataRoamingPopup(false)}>
           <div className="w-full max-w-sm rounded-3xl p-7 text-center fade-in"
-            style={{ background: 'linear-gradient(160deg,#0E1828 0%,#162036 100%)', border: '1px solid rgba(129,140,248,0.35)' }}>
-            <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: 'rgba(129,140,248,0.12)', border: '2px solid rgba(129,140,248,0.35)' }}>
-              <span style={{ fontSize: 26 }}>📶</span>
+            style={{ background: 'linear-gradient(160deg,#0E1828 0%,#162036 100%)', border: '1px solid rgba(16,185,129,0.3)' }}>
+            <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: 'rgba(16,185,129,0.15)', border: '2px solid rgba(16,185,129,0.4)' }}>
+              <span style={{ fontSize: 28, color: '#10B981' }}>✓</span>
             </div>
-            <div className="text-base font-bold mb-2" style={{ color: '#E2E8F0', fontFamily: 'Outfit' }}>Bundle Subscribed</div>
-            <p className="text-sm leading-relaxed mb-6" style={{ color: '#94A3B8', fontFamily: 'Inter' }}>
-              Activate <strong style={{ color: '#818CF8' }}>Data Roaming</strong> in Connectivity Settings to access your resources.
-            </p>
-            <div className="flex gap-3">
-              <button onClick={() => setShowDataRoamingPopup(false)} className="flex-1 py-3.5 rounded-2xl font-semibold text-sm" style={{ background: 'rgba(255,255,255,0.06)', color: '#94A3B8', fontFamily: 'Outfit' }}>Dismiss</button>
-              <button onClick={() => { setShowDataRoamingPopup(false); setView('settings'); }} className="flex-1 py-3.5 rounded-2xl font-bold text-sm" style={{ background: '#818CF8', color: '#070B14', fontFamily: 'Outfit' }}>Go to Settings</button>
-            </div>
+            <div className="text-lg font-bold" style={{ color: '#E2E8F0', fontFamily: 'Outfit' }}>Bundle Subscribed</div>
+            <button onClick={() => setShowDataRoamingPopup(false)} className="w-full mt-6 py-3.5 rounded-2xl font-bold text-sm" style={{ background: '#10B981', color: '#070B14', fontFamily: 'Outfit' }}>Done</button>
           </div>
         </OverlayModal>
       )}
@@ -1268,13 +1356,15 @@ export default function App() {
           onBundleAction={handleBundleAction}
           onSubscribe={handleSubscribeDirect}
           onViewCountries={setCountriesBundle}
-          userCreditLimit={userCreditLimit} onCreditLimitUpdate={setUserCreditLimit} />
+          userCreditLimit={userCreditLimit} onCreditLimitUpdate={handleCreditLimitUpdate}
+          activeBundles={activeBundles} />
       )}
 
       {view === 'settings' && (
         <ConnectivitySettings onBack={() => setView('home')}
-          userCreditLimit={userCreditLimit} onCreditLimitUpdate={setUserCreditLimit}
-          dataRoaming={dataRoaming} onDataRoamingChange={setDataRoaming} />
+          userCreditLimit={userCreditLimit} onCreditLimitUpdate={handleCreditLimitUpdate}
+          dataRoaming={dataRoaming} onDataRoamingChange={setDataRoaming}
+          activeBundles={activeBundles} />
       )}
 
       {selBundle && (
