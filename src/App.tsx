@@ -56,13 +56,13 @@ const BUNDLES: Bundle[] = [
     countries: ['Saudi Arabia'],
   },
   {
-    id: 'saudi-2000', name: 'Saudi Roaming 2000', region: 'KSA',
+    id: 'saudi-2000', name: 'Saudi Roaming 2GB', region: 'KSA',
     price: 2749, validityLabel: '30 Days', validityDays: 30,
     data: '2 GB', dataGB: 2,
     countries: ['Saudi Arabia'],
   },
   {
-    id: 'saudi-5000', name: 'Saudi Roaming 5000', region: 'KSA',
+    id: 'saudi-5000', name: 'Saudi Roaming 6GB', region: 'KSA',
     price: 6872, validityLabel: '45 Days', validityDays: 45,
     data: '6 GB', dataGB: 6,
     countries: ['Saudi Arabia'],
@@ -121,6 +121,12 @@ const BUNDLES: Bundle[] = [
     id: 'world-5gb', name: 'World Bundle 5GB', region: 'World',
     price: 11682, validityLabel: '90 Days', validityDays: 90,
     data: '5 GB', dataGB: 5,
+    countries: WORLD_COUNTRIES,
+  },
+  {
+    id: 'roaming-pass', name: 'Roaming Pass', region: 'World',
+    price: 12000, validityLabel: '365 Days', validityDays: 365,
+    data: '8 GB', dataGB: 8,
     countries: WORLD_COUNTRIES,
   },
   // Euro
@@ -701,7 +707,7 @@ function BundleListRow({ bundle, isFav, onToggleFav, onSubscribe, onViewCountrie
       </div>
       <div className="flex flex-col gap-1.5 flex-shrink-0">
         <button onClick={() => onViewCountries(bundle)} className="px-3 py-1.5 rounded-xl text-xs font-semibold"
-          style={{ background: 'rgba(255,255,255,0.06)', color: '#94A3B8', border: '1px solid rgba(255,255,255,0.1)', fontFamily: 'Outfit', whiteSpace: 'nowrap' }}>
+          style={{ background: 'rgba(245,158,11,0.15)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.35)', fontFamily: 'Outfit', whiteSpace: 'nowrap' }}>
           View Countries
         </button>
         <button onClick={onSubscribe} className="px-3 py-1.5 rounded-xl text-xs font-bold"
@@ -747,6 +753,8 @@ function BundleModal({ bundle, action, onClose, onConfirm, onViewCountries }: {
   onViewCountries: (b: Bundle) => void;
 }) {
   const [countriesOpen, setCountriesOpen] = useState(false);
+  const [moreInfoOpen, setMoreInfoOpen] = useState(false);
+  const [tcOpen, setTcOpen] = useState(false);
   const meta = REGION_META[bundle.region];
   const displayCountries = bundle.countries.length <= 3
     ? bundle.countries
@@ -822,29 +830,43 @@ function BundleModal({ bundle, action, onClose, onConfirm, onViewCountries }: {
           )}
         </div>
 
-        {/* More Information */}
-        <div className="mb-4">
-          <div className="text-xs font-semibold mb-2 uppercase tracking-widest" style={{ color: '#475569', fontFamily: 'Outfit' }}>More Information</div>
-          <div className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-            {MORE_INFO_TEXT.map((item, i) => (
-              <div key={i} className="mb-2 last:mb-0">
-                <div className="text-xs font-semibold mb-0.5" style={{ color: '#94A3B8', fontFamily: 'Outfit' }}>{item.label}</div>
-                <div className="text-xs" style={{ color: '#475569', fontFamily: 'Inter', wordBreak: 'break-all' }}>{item.value}</div>
-              </div>
-            ))}
-          </div>
+        {/* More Information — collapsible */}
+        <div className="mb-3">
+          <button className="w-full flex items-center justify-between py-3 px-4 rounded-2xl"
+            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
+            onClick={() => setMoreInfoOpen(o => !o)}>
+            <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#475569', fontFamily: 'Outfit' }}>More Information</span>
+            <span style={{ color: '#475569', fontSize: 16, transform: moreInfoOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>›</span>
+          </button>
+          {moreInfoOpen && (
+            <div className="mt-2 rounded-2xl p-4 fade-in" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              {MORE_INFO_TEXT.map((item, i) => (
+                <div key={i} className="mb-3 last:mb-0">
+                  <div className="text-xs font-semibold mb-0.5" style={{ color: '#94A3B8', fontFamily: 'Outfit' }}>{item.label}</div>
+                  <div className="text-xs leading-relaxed" style={{ color: '#475569', fontFamily: 'Inter', wordBreak: 'break-all' }}>{item.value}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Terms & Conditions */}
+        {/* Terms & Conditions — collapsible */}
         <div className="mb-7">
-          <div className="text-xs font-semibold mb-2 uppercase tracking-widest" style={{ color: '#475569', fontFamily: 'Outfit' }}>Terms &amp; Conditions</div>
-          <div className="rounded-2xl p-4 space-y-3" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-            {TC_TEXT.map((t, i) => (
-              <div key={i} className="flex gap-2 text-xs" style={{ color: '#475569', fontFamily: 'Inter', lineHeight: 1.6 }}>
-                <span className="flex-shrink-0 font-bold" style={{ color: meta.color }}>·</span>{t}
-              </div>
-            ))}
-          </div>
+          <button className="w-full flex items-center justify-between py-3 px-4 rounded-2xl"
+            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
+            onClick={() => setTcOpen(o => !o)}>
+            <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#475569', fontFamily: 'Outfit' }}>Terms &amp; Conditions</span>
+            <span style={{ color: '#475569', fontSize: 16, transform: tcOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>›</span>
+          </button>
+          {tcOpen && (
+            <div className="mt-2 rounded-2xl p-4 space-y-3 fade-in" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              {TC_TEXT.map((t, i) => (
+                <div key={i} className="flex gap-2 text-xs" style={{ color: '#475569', fontFamily: 'Inter', lineHeight: 1.6 }}>
+                  <span className="flex-shrink-0 font-bold" style={{ color: meta.color }}>·</span>{t}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <button onClick={onConfirm} className="w-full py-4 rounded-2xl text-base font-bold"
@@ -961,12 +983,11 @@ function HomeView({ roaming, onRoamingChange, onOpenSettings, favs, onToggleFav,
               <div className="text-xs" style={{ color: '#475569', fontFamily: 'Outfit' }}>{REGION_META[selRegion!].desc}</div>
             </div>
           </div>
-          <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(160px,1fr))' }}>
-            {BUNDLES.filter(b => b.region === selRegion).map(b => (
-              <BundleCard key={b.id} bundle={b} isFav={favs.has(b.id)} onToggleFav={() => onToggleFav(b.id)}
-                onAction={a => handleAction(b, a)} onViewCountries={onViewCountries} />
-            ))}
-          </div>
+          <GroupedBundleList
+            bundles={BUNDLES.filter(b => b.region === selRegion)}
+            favs={favs} onToggleFav={onToggleFav}
+            onSubscribe={b => handleAction(b, 'subscribe')}
+            onViewCountries={onViewCountries} />
         </div>
       ) : (
         <>
@@ -1024,12 +1045,10 @@ function HomeView({ roaming, onRoamingChange, onOpenSettings, favs, onToggleFav,
 
               {/* Browse All */}
               <div className="text-xs mb-3 font-medium uppercase tracking-widest" style={{ color: '#475569', fontFamily: 'Outfit' }}>Browse All</div>
-              <div className="grid gap-4 mb-2" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(160px,1fr))' }}>
-                {BUNDLES.map(b => (
-                  <BundleCard key={b.id} bundle={b} isFav={favs.has(b.id)} onToggleFav={() => onToggleFav(b.id)}
-                    onAction={a => handleAction(b, a)} onViewCountries={onViewCountries} />
-                ))}
-              </div>
+              <GroupedBundleList
+                bundles={BUNDLES} favs={favs} onToggleFav={onToggleFav}
+                onSubscribe={b => handleAction(b, 'subscribe')}
+                onViewCountries={onViewCountries} />
             </div>
           )}
         </>
