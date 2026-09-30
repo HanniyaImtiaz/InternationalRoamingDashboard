@@ -266,74 +266,52 @@ function bundleUsage(b: Bundle, idx: number) {
   return { total, used, rem, pct, fmtRem: fmtGB(rem), fmtUsed: fmtGB(used), fmtTotal: fmtGB(total) };
 }
 
-function DataIncentive({ bundles, size = 140, sw = 12 }: { bundles: Bundle[]; size?: number; sw?: number }) {
-  const fs = size > 130 ? 18 : 14;
+const DATA_COLORS = ['#06B6D4', '#818CF8', '#34D399', '#F59E0B', '#FB7185'];
 
-  if (bundles.length === 0) {
-    return (
-      <div className="flex flex-col items-center gap-2 w-full">
-        <CircularProgress pct={0} color="rgba(255,255,255,0.15)" size={size} strokeWidth={sw}>
-          <span style={{ color: '#475569', fontFamily: 'JetBrains Mono', fontSize: fs }}>—</span>
-        </CircularProgress>
-        <div className="text-xs" style={{ color: '#475569', fontFamily: 'Outfit' }}>No data yet</div>
-      </div>
-    );
-  }
-
-  if (bundles.length === 1) {
-    const b = bundles[0];
-    const u = bundleUsage(b, 0);
-    return (
-      <div className="flex flex-col items-center gap-2 w-full">
-        <CircularProgress pct={u.pct} color="#06B6D4" size={size} strokeWidth={sw}>
-          <div className="flex flex-col items-center">
-            <span className="font-bold leading-none" style={{ color: '#06B6D4', fontFamily: 'JetBrains Mono', fontSize: fs }}>{u.fmtRem}</span>
-            <span className="mt-0.5" style={{ color: '#475569', fontFamily: 'Outfit', fontSize: 10 }}>remaining</span>
-          </div>
-        </CircularProgress>
-        <div className="flex items-center gap-5 mt-1">
-          {[{ label: 'Remaining', val: u.fmtRem, col: '#06B6D4' }, { label: 'Used', val: u.fmtUsed, col: '#94A3B8' }, { label: 'Total', val: u.fmtTotal, col: '#475569' }].map((s, i, arr) => (
-            <div key={s.label} className="flex items-center gap-5">
-              <div className="text-center">
-                <div className="text-xs font-bold" style={{ color: s.col, fontFamily: 'JetBrains Mono' }}>{s.val}</div>
-                <div className="text-xs" style={{ color: '#475569', fontFamily: 'Outfit' }}>{s.label}</div>
-              </div>
-              {i < arr.length - 1 && <div className="w-px h-6" style={{ background: 'rgba(255,255,255,0.1)' }} />}
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // Multiple bundles — horizontal scroll row
-  const circleSize = Math.max(90, Math.round(size * 0.72));
-  const circleSw = Math.max(8, Math.round(sw * 0.8));
-  const circlefs = 12;
-  const COLORS = ['#06B6D4', '#818CF8', '#34D399', '#F59E0B', '#FB7185'];
+function DataIncentive({ bundles }: { bundles: Bundle[] }) {
+  if (bundles.length === 0) return null;
 
   return (
-    <div className="w-full overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
-      <div className="flex gap-4 px-1" style={{ width: 'max-content' }}>
-        {bundles.map((b, idx) => {
-          const u = bundleUsage(b, idx);
-          const color = COLORS[idx % COLORS.length];
-          return (
-            <div key={b.id + idx} className="flex flex-col items-center gap-1.5 flex-shrink-0">
-              <CircularProgress pct={u.pct} color={color} size={circleSize} strokeWidth={circleSw}>
-                <div className="flex flex-col items-center px-1">
-                  <span className="font-bold leading-none text-center" style={{ color, fontFamily: 'JetBrains Mono', fontSize: circlefs }}>{u.fmtRem}</span>
-                  <span style={{ color: '#475569', fontFamily: 'Outfit', fontSize: 9 }}>left</span>
-                </div>
-              </CircularProgress>
-              <div className="text-center" style={{ maxWidth: circleSize }}>
-                <div className="text-xs font-semibold leading-tight" style={{ color: '#E2E8F0', fontFamily: 'Outfit', fontSize: 10 }}>{b.name}</div>
-                <div style={{ color: '#475569', fontFamily: 'JetBrains Mono', fontSize: 9 }}>{u.fmtUsed} used</div>
+    <div className="w-full space-y-3">
+      {bundles.map((b, idx) => {
+        const u = bundleUsage(b, idx);
+        const color = DATA_COLORS[idx % DATA_COLORS.length];
+        const usedPct = Math.min(100, (u.used / u.total) * 100);
+        return (
+          <div key={b.id + idx} className="rounded-2xl p-3.5"
+            style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${color}22` }}>
+            {/* Header row: icon + label + bundle name */}
+            <div className="flex items-center gap-2 mb-2.5">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: `${color}18` }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M1 6C1 6 5 2 12 2C19 2 23 6 23 6" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M5 10C5 10 7.5 7 12 7C16.5 7 19 10 19 10" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M9 14C9 14 10.5 12 12 12C13.5 12 15 14 15 14" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+                  <circle cx="12" cy="18" r="1.5" fill={color}/>
+                </svg>
               </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#94A3B8', fontFamily: 'Outfit' }}>DATA</div>
+                {bundles.length > 1 && (
+                  <div className="text-xs truncate" style={{ color: '#475569', fontFamily: 'Outfit' }}>{b.name}</div>
+                )}
+              </div>
+              <div className="text-xs font-semibold" style={{ color: '#475569', fontFamily: 'JetBrains Mono' }}>{u.fmtUsed} used</div>
             </div>
-          );
-        })}
-      </div>
+            {/* Progress bar */}
+            <div className="h-1.5 rounded-full mb-2.5" style={{ background: 'rgba(255,255,255,0.08)' }}>
+              <div className="h-full rounded-full transition-all duration-700"
+                style={{ width: `${usedPct}%`, background: `linear-gradient(90deg, ${color}cc, ${color})` }} />
+            </div>
+            {/* Stats row */}
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-bold" style={{ color, fontFamily: 'JetBrains Mono', fontSize: 22 }}>{u.fmtRem}</span>
+              <span className="text-xs" style={{ color: '#475569', fontFamily: 'Outfit' }}>Left out of {u.fmtTotal}</span>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -825,13 +803,17 @@ function BundleModal({ bundle, action, onClose, onConfirm, onViewCountries }: {
 
         <div className="flex items-baseline gap-3 mb-4">
           <span className="text-3xl font-bold" style={{ color: '#E2E8F0', fontFamily: 'JetBrains Mono' }}>PKR {bundle.price.toLocaleString()}</span>
-          <span className="text-sm" style={{ color: '#475569', fontFamily: 'Outfit' }}>· {bundle.validityLabel}</span>
         </div>
 
         <div className="flex gap-3 mb-5">
           <div className="flex-1 rounded-2xl p-3.5" style={{ background: 'rgba(6,182,212,0.07)', border: '1px solid rgba(6,182,212,0.18)' }}>
             <div className="text-xs mb-1" style={{ color: '#475569', fontFamily: 'Outfit' }}>Data</div>
             <div className="text-2xl font-bold" style={{ color: '#06B6D4', fontFamily: 'JetBrains Mono' }}>{bundle.data}</div>
+          </div>
+          <div className="flex-1 rounded-2xl p-3.5" style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.22)' }}>
+            <div className="text-xs mb-1" style={{ color: '#475569', fontFamily: 'Outfit' }}>Validity</div>
+            <div className="text-2xl font-bold" style={{ color: '#F59E0B', fontFamily: 'JetBrains Mono' }}>{bundle.validityLabel}</div>
+            <div className="text-xs mt-1" style={{ color: '#94A3B8', fontFamily: 'Outfit' }}>Expires {ordinalDate(bundle.validityDays)}</div>
           </div>
         </div>
 
@@ -984,19 +966,108 @@ function BundleHeaderBadge({ activeBundles }: { activeBundles: Bundle[] }) {
 
 // ─── Home Incentive Widget ────────────────────────────────────────────────────
 
-function IncentiveWidget({ onClick, activeBundles }: { onClick: () => void; activeBundles: Bundle[] }) {
+interface ToggleState { paygBlocked: boolean; incomingSMS: boolean; dataRoaming: boolean; }
+interface ToggleSetters { setPaygBlocked: (v: boolean) => void; setIncomingSMS: (v: boolean) => void; setDataRoaming: (v: boolean) => void; }
+
+function CompactToggleRow({ ts, setters, hasBundles }: { ts: ToggleState; setters: ToggleSetters; hasBundles: boolean }) {
+  const [openTip, setOpenTip] = useState<string | null>(null);
+
+  const items = [
+    {
+      id: 'voice', label: 'Voice', desc: 'Pay-as-you-go voice rates apply abroad',
+      active: !ts.paygBlocked, onChange: (v: boolean) => setters.setPaygBlocked(!v), locked: false,
+    },
+    {
+      id: 'incoming', label: 'Incoming', desc: 'Receive calls and SMS abroad',
+      active: ts.incomingSMS, onChange: setters.setIncomingSMS, locked: false,
+    },
+    {
+      id: 'data', label: 'Data', desc: hasBundles ? 'Data roaming active via your bundle' : 'Subscribe to a bundle to activate data roaming',
+      active: ts.dataRoaming, onChange: setters.setDataRoaming, locked: !hasBundles,
+    },
+  ];
+
+  return (
+    <div className="mb-3">
+      <div className="flex gap-2">
+        {items.map(item => (
+          <div key={item.id} className="flex-1 flex flex-col gap-1">
+            <button onClick={() => !item.locked && item.onChange(!item.active)}
+              className="w-full flex items-center justify-between px-3 py-2 rounded-xl"
+              style={{
+                background: item.locked ? 'rgba(255,255,255,0.02)' : item.active ? 'rgba(6,182,212,0.08)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${item.locked ? 'rgba(255,255,255,0.05)' : item.active ? 'rgba(6,182,212,0.2)' : 'rgba(255,255,255,0.07)'}`,
+                cursor: item.locked ? 'not-allowed' : 'pointer',
+                opacity: item.locked ? 0.5 : 1,
+              }}>
+              <span className="text-xs font-semibold" style={{ color: item.locked ? '#334155' : item.active ? '#06B6D4' : '#475569', fontFamily: 'Outfit' }}>{item.label}</span>
+              <div className="relative w-7 h-4 rounded-full ml-1.5 flex-shrink-0 transition-all duration-200"
+                style={{ background: item.locked ? 'rgba(255,255,255,0.1)' : item.active ? '#06B6D4' : 'rgba(255,255,255,0.15)' }}>
+                <div className="absolute top-0.5 w-3 h-3 rounded-full transition-all duration-200"
+                  style={{ background: '#fff', left: item.active ? '14px' : '2px', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+              </div>
+            </button>
+            {/* ⓘ info button below each toggle */}
+            <button onClick={() => setOpenTip(openTip === item.id ? null : item.id)}
+              className="w-full flex items-center justify-center gap-1 py-0.5 rounded-lg"
+              style={{ background: openTip === item.id ? 'rgba(6,182,212,0.07)' : 'transparent' }}>
+              <span className="text-xs font-bold"
+                style={{ color: openTip === item.id ? '#06B6D4' : '#334155', fontFamily: 'JetBrains Mono', fontSize: 10 }}>ⓘ</span>
+              <span className="text-xs" style={{ color: openTip === item.id ? '#06B6D4' : '#334155', fontFamily: 'Outfit', fontSize: 10 }}>info</span>
+            </button>
+          </div>
+        ))}
+      </div>
+      {openTip && (
+        <div className="mt-2 px-3 py-2.5 rounded-xl fade-in"
+          style={{ background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.18)' }}>
+          <p className="text-xs leading-relaxed" style={{ color: '#94A3B8', fontFamily: 'Inter' }}>
+            {items.find(i => i.id === openTip)?.desc}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function IncentiveWidget({ onClick, activeBundles, ts, setters }: {
+  onClick: () => void; activeBundles: Bundle[];
+  ts: ToggleState; setters: ToggleSetters;
+}) {
+  if (activeBundles.length === 0) {
+    return (
+      <div>
+        <CompactToggleRow ts={ts} setters={setters} hasBundles={activeBundles.length > 0} />
+        <button onClick={onClick} className="w-full flex items-center gap-3 rounded-2xl px-4 py-3.5"
+          style={{ background: 'rgba(14,24,40,0.9)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: 'rgba(71,85,105,0.2)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <span style={{ color: '#475569', fontSize: 16 }}>📡</span>
+          </div>
+          <div className="flex-1 text-left">
+            <div className="text-sm font-semibold" style={{ color: '#94A3B8', fontFamily: 'Outfit' }}>No Active Bundle</div>
+            <div className="text-xs" style={{ color: '#475569', fontFamily: 'Outfit' }}>Subscribe below to get started</div>
+          </div>
+          <div className="flex items-center gap-1" style={{ color: '#475569' }}>
+            <span className="text-xs" style={{ fontFamily: 'Outfit' }}>Settings</span>
+            <span style={{ fontSize: 14 }}>›</span>
+          </div>
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-3xl p-5" style={{ background: 'linear-gradient(135deg,#0E1828 0%,#162036 100%)', border: '1px solid rgba(255,255,255,0.08)' }}>
-      <div className="text-xs font-semibold mb-3 uppercase tracking-widest" style={{ color: '#475569', fontFamily: 'Outfit' }}>Remaining Incentive</div>
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#475569', fontFamily: 'Outfit' }}>Remaining Incentive</div>
+        <button onClick={onClick} className="flex items-center gap-1" style={{ color: '#06B6D4' }}>
+          <span className="text-xs font-semibold" style={{ fontFamily: 'Outfit' }}>Settings</span>
+          <span style={{ fontSize: 12 }}>›</span>
+        </button>
+      </div>
       <BundleHeaderBadge activeBundles={activeBundles} />
-      <button onClick={onClick} className="w-full flex flex-col items-center">
-        <DataIncentive bundles={activeBundles} size={115} sw={10} />
-        <div className="flex items-center gap-1.5 mt-4">
-          <span className="text-xs" style={{ color: '#475569', fontFamily: 'Outfit' }}>Tap for</span>
-          <span className="text-xs font-semibold" style={{ color: '#06B6D4', fontFamily: 'Outfit' }}>Connectivity Settings</span>
-          <span style={{ color: '#06B6D4', fontSize: 10 }}>›</span>
-        </div>
-      </button>
+      <DataIncentive bundles={activeBundles} />
     </div>
   );
 }
@@ -1004,7 +1075,7 @@ function IncentiveWidget({ onClick, activeBundles }: { onClick: () => void; acti
 // ─── HOME VIEW ────────────────────────────────────────────────────────────────
 
 function HomeView({ roaming, onRoamingChange, onOpenSettings, favs, onToggleFav,
-  onBundleAction, onSubscribe, onViewCountries, userCreditLimit, onCreditLimitUpdate, activeBundles }: {
+  onBundleAction, onSubscribe, onViewCountries, userCreditLimit, onCreditLimitUpdate, activeBundles, ts, setters }: {
   roaming: boolean; onRoamingChange: (v: boolean) => void; onOpenSettings: () => void;
   favs: Set<string>; onToggleFav: (id: string) => void;
   onBundleAction: (b: Bundle, a: BundleAction | 'blocked') => void;
@@ -1012,6 +1083,7 @@ function HomeView({ roaming, onRoamingChange, onOpenSettings, favs, onToggleFav,
   onViewCountries: (b: Bundle) => void;
   userCreditLimit: number; onCreditLimitUpdate: (v: number) => void;
   activeBundles: Bundle[];
+  ts: ToggleState; setters: ToggleSetters;
 }) {
   const [query, setQuery] = useState('');
   const [selRegion, setSelRegion] = useState<Region | null>(null);
@@ -1078,7 +1150,7 @@ function HomeView({ roaming, onRoamingChange, onOpenSettings, favs, onToggleFav,
         <>
           {roaming && (
             <div className="px-5 mb-4">
-              <IncentiveWidget onClick={onOpenSettings} activeBundles={activeBundles} />
+              <IncentiveWidget onClick={onOpenSettings} activeBundles={activeBundles} ts={ts} setters={setters} />
             </div>
           )}
 
@@ -1145,37 +1217,39 @@ function HomeView({ roaming, onRoamingChange, onOpenSettings, favs, onToggleFav,
 // ─── Connectivity Settings (formerly Roaming Centre) ─────────────────────────
 
 function ConnectivitySettings({ onBack, userCreditLimit, onCreditLimitUpdate,
-  dataRoaming, onDataRoamingChange, activeBundles }: {
+  activeBundles, ts, setters }: {
   onBack: () => void;
   userCreditLimit: number; onCreditLimitUpdate: (v: number) => void;
-  dataRoaming: boolean; onDataRoamingChange: (v: boolean) => void;
   activeBundles: Bundle[];
+  ts: ToggleState; setters: ToggleSetters;
 }) {
-  const [paygBlocked, setPaygBlocked] = useState(false);
-  const [incomingSMS, setIncomingSMS] = useState(true);
   const [tooltip, setTooltip] = useState<string | null>(null);
 
+  const hasBundles = activeBundles.length > 0;
   const TOGGLES = [
     {
       id: 'payg',
-      label: paygBlocked ? 'PAYG Roaming (Blocked)' : 'PAYG Roaming',
-      desc: 'Pay-as-you-go rates apply; Higher than bundle rates',
-      active: !paygBlocked,
-      onChange: (v: boolean) => setPaygBlocked(!v),
+      label: ts.paygBlocked ? 'Voice Roaming (Blocked)' : 'Voice Roaming',
+      desc: 'Pay-as-you-go voice rates apply abroad; subscribe to a bundle for data',
+      active: !ts.paygBlocked,
+      onChange: (v: boolean) => setters.setPaygBlocked(!v),
+      locked: false,
     },
     {
       id: 'incoming',
       label: 'Incoming Calls & SMS',
       desc: 'Receive calls and SMS abroad',
-      active: incomingSMS,
-      onChange: setIncomingSMS,
+      active: ts.incomingSMS,
+      onChange: setters.setIncomingSMS,
+      locked: false,
     },
     {
       id: 'data',
       label: 'Data Roaming',
-      desc: 'Subscribe to a bundle to activate',
-      active: dataRoaming,
-      onChange: onDataRoamingChange,
+      desc: hasBundles ? 'Data roaming active via your subscribed bundle' : 'Subscribe to a bundle to activate data roaming',
+      active: ts.dataRoaming,
+      onChange: setters.setDataRoaming,
+      locked: !hasBundles,
     },
   ];
 
@@ -1199,7 +1273,7 @@ function ConnectivitySettings({ onBack, userCreditLimit, onCreditLimitUpdate,
         <div className="rounded-3xl p-5" style={{ background: 'linear-gradient(135deg,#0E1828 0%,#162036 100%)', border: '1px solid rgba(255,255,255,0.08)' }}>
           <div className="text-xs font-semibold mb-3 uppercase tracking-widest" style={{ color: '#475569', fontFamily: 'Outfit' }}>Remaining Incentive</div>
           <BundleHeaderBadge activeBundles={activeBundles} />
-          <DataIncentive bundles={activeBundles} size={125} sw={11} />
+          <DataIncentive bundles={activeBundles} />
         </div>
       </div>
 
@@ -1208,7 +1282,7 @@ function ConnectivitySettings({ onBack, userCreditLimit, onCreditLimitUpdate,
         <div className="rounded-3xl p-5" style={{ background: '#0E1828', border: '1px solid rgba(255,255,255,0.07)' }}>
           <div className="text-sm font-bold mb-4" style={{ color: '#E2E8F0', fontFamily: 'Outfit' }}>Roaming Controls</div>
           {TOGGLES.map((ctrl, i, arr) => (
-            <div key={ctrl.id}>
+            <div key={ctrl.id} style={{ opacity: ctrl.locked ? 0.45 : 1 }}>
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0 mr-3">
                   <div className="flex items-center gap-2">
@@ -1218,6 +1292,11 @@ function ConnectivitySettings({ onBack, userCreditLimit, onCreditLimitUpdate,
                       style={{ background: tooltip === ctrl.id ? 'rgba(6,182,212,0.2)' : 'rgba(255,255,255,0.08)', color: tooltip === ctrl.id ? '#06B6D4' : '#475569', fontFamily: 'JetBrains Mono' }}>
                       i
                     </button>
+                    {ctrl.locked && (
+                      <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B', fontFamily: 'Outfit', fontSize: 10 }}>
+                        Bundle required
+                      </span>
+                    )}
                   </div>
                   {tooltip === ctrl.id && (
                     <div className="mt-2 px-3 py-2 rounded-xl text-xs leading-relaxed fade-in"
@@ -1226,7 +1305,9 @@ function ConnectivitySettings({ onBack, userCreditLimit, onCreditLimitUpdate,
                     </div>
                   )}
                 </div>
-                <ToggleSwitch active={ctrl.active} onChange={ctrl.onChange} />
+                <div style={{ pointerEvents: ctrl.locked ? 'none' : 'auto' }}>
+                  <ToggleSwitch active={ctrl.active} onChange={ctrl.onChange} />
+                </div>
               </div>
               {i < arr.length - 1 && <div className="h-px my-4" style={{ background: 'rgba(255,255,255,0.05)' }} />}
             </div>
@@ -1250,6 +1331,8 @@ export default function App() {
   const [dataRoaming, setDataRoaming] = useState(false);
   const [userCreditLimit, setUserCreditLimit] = useState(3000);
   const [activeBundles, setActiveBundles] = useState<Bundle[]>([]);
+  const [paygBlocked, setPaygBlocked] = useState(false);
+  const [incomingSMS, setIncomingSMS] = useState(true);
   const [favs, setFavs] = useState<Set<string>>(new Set(['euro-10gb']));
   const [selBundle, setSelBundle] = useState<Bundle | null>(null);
   const [bundleAction, setBundleAction] = useState<BundleAction>('buy');
@@ -1287,6 +1370,7 @@ export default function App() {
     setSelBundle(null);
     if (confirmed) setActiveBundles(prev => [...prev, confirmed]);
     setDataRoaming(true);
+    setView('home');
     setTimeout(() => setShowDataRoamingPopup(true), 200);
   }
 
@@ -1357,14 +1441,17 @@ export default function App() {
           onSubscribe={handleSubscribeDirect}
           onViewCountries={setCountriesBundle}
           userCreditLimit={userCreditLimit} onCreditLimitUpdate={handleCreditLimitUpdate}
-          activeBundles={activeBundles} />
+          activeBundles={activeBundles}
+          ts={{ paygBlocked, incomingSMS, dataRoaming }}
+          setters={{ setPaygBlocked, setIncomingSMS, setDataRoaming }} />
       )}
 
       {view === 'settings' && (
         <ConnectivitySettings onBack={() => setView('home')}
           userCreditLimit={userCreditLimit} onCreditLimitUpdate={handleCreditLimitUpdate}
-          dataRoaming={dataRoaming} onDataRoamingChange={setDataRoaming}
-          activeBundles={activeBundles} />
+          activeBundles={activeBundles}
+          ts={{ paygBlocked, incomingSMS, dataRoaming }}
+          setters={{ setPaygBlocked, setIncomingSMS, setDataRoaming }} />
       )}
 
       {selBundle && (
